@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>New Response</title>
+    <link href="/static/bootstrap.min.css" rel="stylesheet" media="screen">
+    <style>
+      .container {
+        max-width: 1000px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>New Response</h1>
+      <form role="form" method='POST' action='/response/{{details.childid}}/{{details.formid}}'>
+        <div class="form-group">
+          <input type="range" name="rangeListens" min="0" max="3" value="3" step="1" style="max-width: 300px;" required> Listens<br>
+          <input type="range" name="rangeLooks" min="0" max="3" value="3" step="1" style="max-width: 300px;" required> Looks<br>
+          <input type="range" name="rangeMoves" min="0" max="3" value="3" step="1" style="max-width: 300px;" required> Moves<br>
+          <input type="range" name="rangeTouches" min="0" max="3" value="3" step="1" style="max-width: 300px;" required> Touches<br>
+          <input type="range" name="rangeSmells" min="0" max="3" value="3" step="1" style="max-width: 300px;" required> Smells<br>
+          <input type="range" name="rangeTastes" min="0" max="3" value="3" step="1" style="max-width: 300px;" required> Tastes<br>
+          <input type="range" name="rangeTalks" min="0" max="3" value="3" step="1" style="max-width: 300px;" required> Talks<br>
+          <br>
+          <input type="checkbox" name="chkQ1"> {{questions.question1}}<br>
+          <input type="checkbox" name="chkQ2"> {{questions.question2}}<br>
+          <input type="checkbox" name="chkQ3"> {{questions.question3}}<br>
+          <input type="checkbox" name="chkQ4"> {{questions.question4}}<br>
+          <input type="checkbox" name="chkQ5"> {{questions.question5}}<br>
+          <input type="checkbox" name="chkQ6"> {{questions.question6}}<br>
+          <input type="checkbox" name="chkQ7"> {{questions.question7}}<br>
+          <input type="checkbox" name="chkQ8"> {{questions.question8}}<br>
+          <input type="checkbox" name="chkQ9"> {{questions.question9}}<br>
+          <input type="checkbox" name="chkQ10"> {{questions.question10}}<br>
+          <input type="checkbox" name="chkQ11"> {{questions.question11}}<br>
+          <input type="checkbox" name="chkQ12"> {{questions.question12}}<br>
+          <input type="checkbox" name="chkQ13"> {{questions.question13}}<br>
+          <input type="checkbox" name="chkQ14"> {{questions.question14}}<br>
+          <input type="checkbox" name="chkQ15"> {{questions.question15}}<br>
+          <input type="checkbox" name="chkQ16"> {{questions.question16}}<br>
+          <input type="checkbox" name="chkQ17"> {{questions.question17}}<br>
+          <input type="checkbox" name="chkQ18"> {{questions.question18}}<br>
+          <input type="checkbox" name="chkQ19"> {{questions.question19}}<br>
+          <input type="checkbox" name="chkQ20"> {{questions.question20}}<br>
+          <input type="checkbox" name="chkQ21"> {{questions.question21}}<br>
+          <input type="checkbox" name="chkQ22"> {{questions.question22}}<br>
+          <input type="checkbox" name="chkQ23"> {{questions.question23}}<br>
+          <input type="checkbox" name="chkQ24"> {{questions.question24}}<br>
+          <input type="checkbox" name="chkQ25"> {{questions.question25}}<br>
+          <input type="checkbox" name="chkQ26"> {{questions.question26}}<br>
+          <input type="checkbox" name="chkQ27"> {{questions.question27}}<br>
+          <input type="checkbox" name="chkQ28"> {{questions.question28}}<br>
+          <input type="checkbox" name="chkQ29"> {{questions.question29}}<br>
+          <input type="checkbox" name="chkQ30"> {{questions.question30}}<br>
+        </div>
+        <button type="submit" class="btn btn-default">Submit</button>
+      </form>
+    </div>
+    <script src="/static/bootstrap.min.js"></script>
+  </body>
+</html>

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Prescription</title>
+    <link href="/static/bootstrap.min.css" rel="stylesheet" media="screen">
+    <style>
+      .container {
+        max-width: 1000px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <span style="float:right;padding-top:30px;"><a href="/">Back</a></span>
+      <h1>Prescription</h1>
+      <form role="form" method='POST' action='/child/'>
+        <div class="form-group">
+          <ol>
+          {% for prescrip in prescriptable %}
+            <li>{{ prescrip }}</li>
+          {% endfor %}
+          </ol>
+    </div>
+    <br>
+    <script src="/static/bootstrap.min.js"></script>
+  </body>
+</html>

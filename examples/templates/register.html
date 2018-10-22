@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>WatchMeGrow Register</title>
+    <link href="/static/bootstrap.min.css" rel="stylesheet" media="screen">
+    <style>
+      .container {
+        max-width: 1000px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>WatchMeGrow Register</h1>
+      <form role="form" action="" method='POST'>
+        <div class="form-group">
+          <input type="text" name="txtEmail" class="form-control" placeholder="Email" style="max-width: 300px;" required>
+          <input type="password" name="txtPassword" class="form-control" placeholder="Password" style="max-width: 300px;" required>
+          <br>
+          <input type="text" name="txtLastName" class="form-control" placeholder="Last name" style="max-width: 300px;" required>
+          <input type="text" name="txtFirstName" class="form-control" placeholder="First name" style="max-width: 300px;" required>
+          <br>
+          <input type="text" name="txtAddress" class="form-control" placeholder="Address" style="max-width: 300px;" required>
+          <input type="text" name="txtCity" class="form-control" placeholder="City" style="max-width: 300px;" required>
+          <input type="text" name="txtState" class="form-control" placeholder="State" style="max-width: 300px;" required>
+          <input type="text" name="txtZip" class="form-control" placeholder="Zip code" style="max-width: 300px;" required>
+        </div>
+        <button type="submit" class="btn btn-default">Register</button>
+        <button class="btn btn-default" onclick="window.location.href='/login'">Cancel</button>
+      </form>
+    </div>
+    <script src="static/bootstrap.min.js"></script>
+  </body>
+</html>

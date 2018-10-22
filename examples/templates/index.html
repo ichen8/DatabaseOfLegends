@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>WatchMeGrow Portal</title>
+    <link href="/static/bootstrap.min.css" rel="stylesheet" media="screen">
+    <style>
+      .container {
+        max-width: 1000px;
+      }
+      table td {
+        padding: 1em;
+      }
+      table td:first-child {
+        border-right: 1px solid #000;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <span style="float:right;padding-top:30px;"><a href="/logout">Logout</a></span>
+      <h1>WatchMeGrow Portal</h1>
+      <table border='0'>
+      {% for child in childtable %}
+        <tr>
+          <td>{{ child.name }}</td>
+          <td><a href="/response/{{child.id}}">{{child.responsestatus}}</a></td>
+          <td><a href="/prescription/{{child.id}}">View Latest Prescription</a></td>
+          <td><a href="/delete/{{child.id}}">Delete</a></td>
+        </tr>
+      {% endfor %}
+        <tr>
+          <td><a href="/child/">New Child</a></td>
+        </tr>
+      </table>
+    </div>
+    <script src="/static/bootstrap.min.js"></script>
+  </body>
+</html>
