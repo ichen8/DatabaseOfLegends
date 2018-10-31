@@ -3,14 +3,13 @@ create database lol;
 create table lol.player(
 	playerID bigint not null,
 	summonerName varchar(20),
-	timestamp bigint,
 	primary key (playerID)
 );
 
 create table lol.playergame(
 	playerID bigint not null,
 	gameID bigint not null,
-	timestamp bigint not null,
+	timestamp varchar(20) not null,
 
 	championID int not null,
 	lane varchar(20),
@@ -51,16 +50,16 @@ create table lol.game(
 	team2DragonKills int,
 	team2Gold int,
 
-	team1Player1ID bigint references player (playerID),
-	team1Player2ID bigint references player (playerID),
-	team1Player3ID bigint references player (playerID),
-	team1Player4ID bigint references player (playerID),
-	team1Player5ID bigint references player (playerID),
-	team2Player1ID bigint references player (playerID),
-	team2Player2ID bigint references player (playerID),
-	team2Player3ID bigint references player (playerID),
-	team2Player4ID bigint references player (playerID),
-	team2Player5ID bigint references player (playerID),
+	team1Player1ID bigint,
+	team1Player2ID bigint,
+	team1Player3ID bigint,
+	team1Player4ID bigint,
+	team1Player5ID bigint,
+	team2Player1ID bigint,
+	team2Player2ID bigint,
+	team2Player3ID bigint,
+	team2Player4ID bigint,
+	team2Player5ID bigint,
 
 	primary key (gameID)
 );
