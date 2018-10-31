@@ -1,0 +1,19 @@
+<!doctype html>
+<html>
+   <body>
+      
+      <table border=0>
+         {% for game in gameData %}
+            <tr>
+               <th> Player ID: {{ game[0] }} </th>
+               <th> Game ID: {{ game[1] }} </th>
+               <td> {{ game[2] }} </td>
+               <td> Champ ID: {{ game[3] }} </td>
+               <td> Lane: {{ game[4] }} </td>
+               <td> KDA: {{ game[5] }} / {{ game[6] }} / {{ game[7] }} </td>
+            </tr>
+         {% endfor %}
+      </table>
+      
+   </body>
+</html>
