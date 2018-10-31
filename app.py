@@ -12,7 +12,7 @@ mysql = MySQL()
  
 # MySQL configurations
 app.config['MYSQL_DATABASE_USER'] = 'root'
-app.config['MYSQL_DATABASE_PASSWORD'] = 'newpass'
+app.config['MYSQL_DATABASE_PASSWORD'] = ''
 app.config['MYSQL_DATABASE_DB'] = 'lol'
 app.config['MYSQL_DATABASE_HOST'] = 'localhost'
 mysql.init_app(app)
@@ -62,6 +62,12 @@ def delete(playerID, gameID):
     cursor.execute("delete from playergame where playerID = %s and gameID = %s" % (playerID, gameID))
     conn.commit()
     return "deleted"
+
+@app.route("/update/<playerID>/<gameID>/<champID>")
+def update(playerID, gameID, champID):
+    cursor.execute("update playergame SET championID = %s WHERE playerID = %s and gameID = %s" % (champID, playerID, gameID))
+    conn.commit()
+    return "updated"
 
 def insertPlayerGames(playerID):
     url = "%smatch/v3/matchlists/by-account/%s?api_key=%s" % (BASE_URL, playerID, API_KEY)
