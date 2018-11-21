@@ -36,7 +36,6 @@ def index():
 def matchChamp(championID):
     with open('champion.json') as f:
         champData = json.load(f)
-        # json.dump()
     json_tree = objectpath.Tree(champData['data'])
     result_tuple = tuple(json_tree.execute(("$..*[@.key is %s].name" % championID)))
     for entry in result_tuple:
@@ -78,7 +77,8 @@ def delete(playerID, gameID):
 
 @app.route("/update/<playerID>/<gameID>/<champID>")
 def update(playerID, gameID, champID):
-    cursor.execute("update playergame SET championID = %s WHERE playerID = %s and gameID = %s" % (champID, playerID, gameID))
+    championString = matchChamp(champID)
+    cursor.execute("update playergame SET championID = %s, championString = '%s' WHERE playerID = %s and gameID = %s" % (champID, championString, playerID, gameID))
     conn.commit()
     return "updated"
 
