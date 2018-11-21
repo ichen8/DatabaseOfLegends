@@ -1,11 +1,14 @@
+#!/usr/local/bin/python2.7
 # https://code.tutsplus.com/tutorials/creating-a-web-app-from-scratch-using-python-flask-and-mysql--cms-22972
 
 from flask import Flask, render_template
 from flaskext.mysql import MySQL
+from pprint import pprint
 
 import json
 import requests
 import time
+import objectpath
 
 app = Flask(__name__, template_folder="templates")
 mysql = MySQL()
@@ -20,7 +23,7 @@ mysql.init_app(app)
 conn = mysql.connect()
 cursor = conn.cursor()
 
-API_KEY = "RGAPI-338f4df9-5869-4219-979f-6dd191b8c855"
+API_KEY = "RGAPI-64ffe71a-480f-402b-bfc3-41c8e5ac0f39"
 BASE_URL = "https://na1.api.riotgames.com/lol/"
 
 VALID_GAME_MODES = ["CLASSIC", "ARAM"]
@@ -28,6 +31,16 @@ VALID_GAME_MODES = ["CLASSIC", "ARAM"]
 @app.route("/")
 def index():
     return "Welcome!"
+
+@app.route("/matchChamp/<championID>")
+def matchChamp(championID):
+    with open('champion.json') as f:
+        champData = json.load(f)
+        # json.dump()
+    json_tree = objectpath.Tree(champData['data'])
+    result_tuple = tuple(json_tree.execute(("$..*[@.key is %s].name" % championID)))
+    for entry in result_tuple:
+        return entry
 
 @app.route("/player/<summonerName>")
 def player(summonerName):
@@ -90,6 +103,8 @@ def insertPlayerGames(playerID):
         # player stats
         timestamp = time.strftime('%m/%d/%Y %H:%M:%S', time.localtime(game["timestamp"]/1000))
         championID = game["champion"]
+        championString = matchChamp(championID)
+
         lane = game["lane"]
 
         kills = 0
@@ -166,8 +181,8 @@ def insertPlayerGames(playerID):
                     team2Kills, team2Deaths, team2Assists, team2TowerKills, team2InhibKills, team2BaronKills, team2DragonKills, team2Gold,
                     team1Player1ID, team1Player2ID, team1Player3ID, team1Player4ID, team1Player5ID, team2Player1ID, team2Player2ID, team2Player3ID, team2Player4ID, team2Player5ID))
         
-        cursor.execute("insert into playergame values(%lu, %lu, '%s', %d, '%s', %d, %d, %d)" 
-            % (playerID, gameID, timestamp, championID, lane, kills, deaths, assists))
+        cursor.execute("insert into playergame values(%lu, %lu, '%s', %d, '%s', '%s', %d, %d, %d)" 
+            % (playerID, gameID, timestamp, championID, championString, lane, kills, deaths, assists))
 
         print "committed " + str(gameID)
         time.sleep(0.1)
