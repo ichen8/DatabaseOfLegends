@@ -37,7 +37,7 @@ def matchChamp(championID):
     with open('champion.json') as f:
         champData = json.load(f)
     json_tree = objectpath.Tree(champData['data'])
-    result_tuple = tuple(json_tree.execute(("$..*[@.key is %s].name" % championID)))
+    result_tuple = tuple(json_tree.execute(("$..*[@.key is %s].id" % championID)))
     for entry in result_tuple:
         return entry
 
