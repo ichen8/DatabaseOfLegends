@@ -1,4 +1,3 @@
-#!/usr/local/bin/python2.7
 # https://code.tutsplus.com/tutorials/creating-a-web-app-from-scratch-using-python-flask-and-mysql--cms-22972
 
 from flask import Flask, render_template
@@ -23,7 +22,7 @@ mysql.init_app(app)
 conn = mysql.connect()
 cursor = conn.cursor()
 
-API_KEY = "RGAPI-64ffe71a-480f-402b-bfc3-41c8e5ac0f39"
+API_KEY = "RGAPI-c80a689f-8558-418d-92c3-dd3aee3405f9"
 BASE_URL = "https://na1.api.riotgames.com/lol/"
 
 VALID_GAME_MODES = ["CLASSIC", "ARAM"]
@@ -49,13 +48,14 @@ def player(summonerName):
     if "accountId" in jsonResponse:
         # valid summoner name
         playerID = jsonResponse["accountId"]
+        summonerID = jsonResponse["id"]
 
         cursor.execute("select * from player where playerID = %s" % (playerID))
         playerData = cursor.fetchone()
         
         if playerData == None:
             # user info doesn't exist, add to db
-            cursor.execute("insert into player values(%lu, '%s')" % (playerID, summonerName))
+            cursor.execute("insert into player values(%lu, %lu, '%s')" % (playerID, summonerID, summonerName))
             conn.commit()
             print "first time user"
 
@@ -68,6 +68,44 @@ def player(summonerName):
     else:
         # summoner name not found
         return "ERROR: summoner not found"
+
+@app.route("/champPool/<summonerName>")
+def champPool(summonerName):
+    player(summonerName);
+    cursor.execute("select summonerID from player where summonerName = '%s'" % (summonerName))
+    summonerID = cursor.fetchone()[0]
+    url = "%schampion-mastery/v3/champion-masteries/by-summoner/%lu?api_key=%s" % (BASE_URL, summonerID, API_KEY)
+    jsonResponse = _request(url)
+    # print jsonResponse
+
+    count = 0;
+    for champ in jsonResponse:
+        if count == 30:
+            break
+        count += 1
+
+        championID = champ["championId"]
+        championString = matchChamp(championID)
+        championLevel = champ["championLevel"]
+        championPoints = champ["championPoints"]
+
+        cursor.execute("select * from champpool where summonerID = %lu and championID = %d" % (summonerID, championID))
+        if cursor.fetchone() != None:
+            # game already exists in database
+            break
+
+        cursor.execute("insert into champPool values(%lu, %lu, '%s', %d, %lu)" 
+            % (summonerID, championID, championString, championLevel, championPoints))
+
+        # print "committed " + str(summonerID) + " " + championString
+        time.sleep(0.1)
+    conn.commit()
+    # return "summonerID"
+    cursor.execute("select * from champpool where summonerID = %lu order by championPoints desc" % (summonerID))
+    champData = cursor.fetchmany(20)
+
+    return render_template("champPool.html", champData = champData)
+
 
 @app.route("/delete/<playerID>/<gameID>")
 def delete(playerID, gameID):

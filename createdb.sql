@@ -2,6 +2,7 @@ create database lol;
 
 create table lol.player(
 	playerID bigint not null,
+	summonerID bigint,
 	summonerName varchar(20),
 	primary key (playerID)
 );
@@ -64,4 +65,14 @@ create table lol.playergame(
 	primary key (playerID, gameID),
 	foreign key (playerID) references player(playerID) on delete cascade,
 	foreign key (gameID) references game(gameID) on delete cascade
+);
+
+create table lol.champPool(
+	summonerID bigint not null,
+	championID int not null,
+	championString varchar(20),
+	championLevel int,
+	championPoints bigint,
+	
+	primary key (summonerID, championID)
 );

@@ -1,0 +1,17 @@
+<!doctype html>
+<html>
+   <body>
+      
+      <table border=0>
+         {% for champ in champData %}
+            <tr>
+               <th> SummonerID: {{ champ[0] }} </th>
+               <td> ChampionID: {{ champ[1] }} </td>
+               <td> Champion Name: {{ champ[2] }} </td>
+               <td> Points: {{ champ[4] }} </td>
+            </tr>
+         {% endfor %}
+      </table>
+      
+   </body>
+</html>
