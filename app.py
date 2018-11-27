@@ -3,7 +3,9 @@
 from flask import Flask, render_template
 from flaskext.mysql import MySQL
 from pprint import pprint
+from scipy.stats import linregress
 
+import os
 import json
 import requests
 import time
@@ -14,7 +16,7 @@ mysql = MySQL()
  
 # MySQL configurations
 app.config['MYSQL_DATABASE_USER'] = 'root'
-app.config['MYSQL_DATABASE_PASSWORD'] = ''
+app.config['MYSQL_DATABASE_PASSWORD'] = 'newpass'
 app.config['MYSQL_DATABASE_DB'] = 'lol'
 app.config['MYSQL_DATABASE_HOST'] = 'localhost'
 mysql.init_app(app)
@@ -22,7 +24,7 @@ mysql.init_app(app)
 conn = mysql.connect()
 cursor = conn.cursor()
 
-API_KEY = "RGAPI-c80a689f-8558-418d-92c3-dd3aee3405f9"
+API_KEY = "RGAPI-4d2f71a3-2aac-4c3f-b62c-7ba40eb15fd1"
 BASE_URL = "https://na1.api.riotgames.com/lol/"
 
 VALID_GAME_MODES = ["CLASSIC", "ARAM"]
@@ -30,6 +32,121 @@ VALID_GAME_MODES = ["CLASSIC", "ARAM"]
 @app.route("/")
 def index():
     return "Welcome!"
+
+
+def _getServerChampionRatios():
+    dumpFile = "championratios.json"
+    if os.path.exists(dumpFile):
+        with open(dumpFile, 'r') as f:
+            return json.load(f)
+
+    playersUrl = "%sleague/v3/masterleagues/by-queue/RANKED_SOLO_5x5?api_key=%s" % (BASE_URL, API_KEY)
+    playersJsonResponse = _request(playersUrl)
+    summonerIDList = [player["playerOrTeamId"] for player in playersJsonResponse["entries"]]
+
+    playersChampionRatios = {}
+    playersNum = 1
+
+    for summonerID in summonerIDList:
+        print playersNum
+
+        accountUrl = "%ssummoner/v3/summoners/%s?api_key=%s" % (BASE_URL, summonerID, API_KEY)
+        accountJsonResponse = _request(accountUrl)
+        if "accountId" not in accountJsonResponse.keys():
+            continue
+        accountID = accountJsonResponse["accountId"]
+
+        matchlistUrl = "%smatch/v3/matchlists/by-account/%s?api_key=%s" % (BASE_URL, accountID, API_KEY)
+        matchlistJsonResponse = _request(matchlistUrl)
+        if "matches" not in matchlistJsonResponse.keys():
+            continue
+        matchlistData = matchlistJsonResponse["matches"]
+        
+        matchlistSize = len(matchlistData)
+        playersChampionRatios.setdefault(accountID, {})
+
+        for match in matchlistData:
+            championID = match["champion"]
+            if playersChampionRatios[accountID].has_key(championID):
+                playersChampionRatios[accountID][championID] += 1.0 / matchlistSize
+            else:
+                playersChampionRatios[accountID][championID] = 1.0 / matchlistSize
+
+        playersNum += 1
+        time.sleep(1.3)
+
+    with open(dumpFile, 'w') as f:
+        json.dump(playersChampionRatios, f)
+    return playersChampionRatios
+
+
+#https://github.com/jteo1/LoL-Champion-Recommender/blob/master/ChampionRecommendation.py
+@app.route("/recommendChamps/<summonerName>")
+def recommendChamps(summonerName):
+    player(summonerName);
+    cursor.execute("select playerID from player where summonerName = '%s'" % (summonerName))
+    playerID = cursor.fetchone()[0]
+
+    cursor.execute("select championID from playergame where playerID = %lu" % (playerID))
+    gameData = cursor.fetchall()
+
+    matchlistSize = len(gameData)
+    championRatios = {}
+    for match in gameData: 
+        championID = match[0]
+        if championRatios.has_key(championID):
+            championRatios[championID] += 1.0 / matchlistSize
+        else:
+            championRatios[championID] = 1.0 / matchlistSize
+
+    serverChampionRatios = _getServerChampionRatios()
+
+
+    similarityList = {}
+    for accountID, playerChampionRatios in serverChampionRatios.iteritems():
+        x = []
+        y = []
+        #begin accumulating data points in form of (x,y) pairs
+        for championID in championRatios.keys():
+            if str(championID) in playerChampionRatios.keys():
+                x.append(championRatios[championID])
+                y.append(playerChampionRatios[str(championID)])
+
+        #filter out insignifcant graphs with few points, use linear regression of these points to determine similarity score
+        if len(x) > 9 and max(y) > 0.03:
+            similarityList[accountID] = linregress(x, y)[2]
+
+    totals = {}
+    similaritySums = {}
+    for accountID, playerChampionRatios in serverChampionRatios.iteritems():
+        if accountID == str(playerID) or accountID not in similarityList.keys():
+            continue
+
+        playerSimilarity = similarityList[accountID]
+
+        if playerSimilarity < 0:
+            continue
+
+        for championID, proportion in playerChampionRatios.iteritems():
+            #only calculate for champions not in user's own pool or in a very low proportion of user's champion pool
+            if int(championID) not in championRatios.keys() or (int(championID) in championRatios.keys() and championRatios[int(championID)] < 0.01):
+                totals.setdefault(championID, 0)
+                totals[championID] += playerSimilarity * playerChampionRatios[str(championID)]
+                similaritySums.setdefault(championID, 0)
+                similaritySums[championID] += playerSimilarity
+
+    predictedProportions = [(championID, total/similaritySums[championID]) for championID, total in totals.iteritems()]
+    predictedProportions.sort(key = lambda x: x[1], reverse = True)
+    
+    entryCount = 1
+    for entry in predictedProportions:
+        if entryCount > 10:
+            break
+        print "%s %.2f" % (matchChamp(int(entry[0])), entry[1] * 100)
+        entryCount += 1
+
+    return str(gameData)
+
 
 @app.route("/matchChamp/<championID>")
 def matchChamp(championID):
@@ -89,7 +206,7 @@ def champPool(summonerName):
         championLevel = champ["championLevel"]
         championPoints = champ["championPoints"]
 
-        cursor.execute("select * from champpool where summonerID = %lu and championID = %d" % (summonerID, championID))
+        cursor.execute("select * from champPool where summonerID = %lu and championID = %d" % (summonerID, championID))
         if cursor.fetchone() != None:
             # game already exists in database
             break
@@ -101,7 +218,7 @@ def champPool(summonerName):
         time.sleep(0.1)
     conn.commit()
     # return "summonerID"
-    cursor.execute("select * from champpool where summonerID = %lu order by championPoints desc" % (summonerID))
+    cursor.execute("select * from champPool where summonerID = %lu order by championPoints desc" % (summonerID))
     champData = cursor.fetchmany(20)
 
     return render_template("champPool.html", champData = champData)
@@ -126,8 +243,8 @@ def insertPlayerGames(playerID):
 
     count = 0
     for game in jsonResponse["matches"]:
-        if count == 20:
-            break
+        # if count == 20:
+        #     break
         count += 1
 
         gameID = game["gameId"]
@@ -152,6 +269,11 @@ def insertPlayerGames(playerID):
         # team stats
         gameUrl = "%smatch/v3/matches/%s?api_key=%s" % (BASE_URL, gameID, API_KEY)
         gameJsonResponse = _request(gameUrl)
+
+        # error parsing - rate limit exceeded
+        if "gameMode" not in gameJsonResponse:
+            time.sleep(1)
+            continue
 
         # only parse classic 5v5 games
         if gameJsonResponse["gameMode"] not in VALID_GAME_MODES:
@@ -181,16 +303,9 @@ def insertPlayerGames(playerID):
         team2BaronKills = gameJsonResponse["teams"][1]["baronKills"]
         team2DragonKills = gameJsonResponse["teams"][1]["dragonKills"]
 
-        team1Player1ID = gameJsonResponse["participantIdentities"][0]["player"]["accountId"]
-        team1Player2ID = gameJsonResponse["participantIdentities"][1]["player"]["accountId"]
-        team1Player3ID = gameJsonResponse["participantIdentities"][2]["player"]["accountId"]
-        team1Player4ID = gameJsonResponse["participantIdentities"][3]["player"]["accountId"]
-        team1Player5ID = gameJsonResponse["participantIdentities"][4]["player"]["accountId"]
-        team2Player1ID = gameJsonResponse["participantIdentities"][5]["player"]["accountId"]
-        team2Player2ID = gameJsonResponse["participantIdentities"][6]["player"]["accountId"]
-        team2Player3ID = gameJsonResponse["participantIdentities"][7]["player"]["accountId"]
-        team2Player4ID = gameJsonResponse["participantIdentities"][8]["player"]["accountId"]
-        team2Player5ID = gameJsonResponse["participantIdentities"][9]["player"]["accountId"]
+        playerIDs = [0] * 10
+        for i in xrange(len(gameJsonResponse["participantIdentities"])):
+            playerIDs[i] = gameJsonResponse["participantIdentities"][i]["player"]["accountId"]
 
         for i in xrange(len(gameJsonResponse["participants"])):
             participant = gameJsonResponse["participants"][i]
@@ -217,7 +332,7 @@ def insertPlayerGames(playerID):
                 % (gameID, gameDuration, queueID, seasonID, winTeam,
                     team1Kills, team1Deaths, team1Assists, team1TowerKills, team1InhibKills, team1BaronKills, team1DragonKills, team1Gold,
                     team2Kills, team2Deaths, team2Assists, team2TowerKills, team2InhibKills, team2BaronKills, team2DragonKills, team2Gold,
-                    team1Player1ID, team1Player2ID, team1Player3ID, team1Player4ID, team1Player5ID, team2Player1ID, team2Player2ID, team2Player3ID, team2Player4ID, team2Player5ID))
+                    playerIDs[0], playerIDs[1], playerIDs[2], playerIDs[3], playerIDs[4], playerIDs[5], playerIDs[6], playerIDs[7], playerIDs[8], playerIDs[9]))
         
         cursor.execute("insert into playergame values(%lu, %lu, '%s', %d, '%s', '%s', %d, %d, %d)" 
             % (playerID, gameID, timestamp, championID, championString, lane, kills, deaths, assists))
