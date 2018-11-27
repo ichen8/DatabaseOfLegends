@@ -1,6 +1,6 @@
 # https://code.tutsplus.com/tutorials/creating-a-web-app-from-scratch-using-python-flask-and-mysql--cms-22972
 
-from flask import Flask, render_template
+from flask import Flask, render_template, request, redirect, url_for
 from flaskext.mysql import MySQL
 from pprint import pprint
 
@@ -22,14 +22,17 @@ mysql.init_app(app)
 conn = mysql.connect()
 cursor = conn.cursor()
 
-API_KEY = "RGAPI-c80a689f-8558-418d-92c3-dd3aee3405f9"
+API_KEY = "RGAPI-374b8197-92df-4f67-b81a-950e7adabc24"
 BASE_URL = "https://na1.api.riotgames.com/lol/"
 
 VALID_GAME_MODES = ["CLASSIC", "ARAM"]
 
-@app.route("/")
+@app.route("/", methods=['GET','POST'])
 def index():
-    return "Welcome!"
+	if request.method == 'POST':
+		name = request.form.get('playerName')
+		return redirect(url_for('player', summonerName=name))
+	return render_template("index.html")
 
 @app.route("/matchChamp/<championID>")
 def matchChamp(championID):
@@ -40,7 +43,7 @@ def matchChamp(championID):
     for entry in result_tuple:
         return entry
 
-@app.route("/player/<summonerName>")
+@app.route("/player/<summonerName>", methods=['GET'])
 def player(summonerName):
     url = "%ssummoner/v3/summoners/by-name/%s?api_key=%s" % (BASE_URL, summonerName, API_KEY)
     jsonResponse = _request(url)
@@ -61,15 +64,36 @@ def player(summonerName):
 
         insertPlayerGames(playerID)
 
-        cursor.execute("select * from playergame where playerID = %s order by timestamp desc" % (playerID))
-        gameData = cursor.fetchmany(10)
+        # cursor.execute("select * from playergame where playerID = %s order by timestamp desc" % (playerID))
+        cursor.execute("""\
+			select playerID, playergame.gameID, timestamp, championID, championString, lane, kills, deaths, assists
+			,case 
+			    when (((game.team1Player1ID = playergame.playerID
+			        OR game.team1Player2ID = playergame.playerID
+			        OR game.team1Player3ID = playergame.playerID
+			        OR game.team1Player4ID = playergame.playerID
+			        OR game.team1Player5ID = playergame.playerID) AND game.winTeam = 1) OR
+			        ((game.team2Player1ID = playergame.playerID
+			        OR game.team2Player2ID = playergame.playerID
+			        OR game.team2Player3ID = playergame.playerID
+			        OR game.team2Player4ID = playergame.playerID
+			        OR game.team2Player5ID = playergame.playerID) AND game.winTeam = 2))   then 'Victory'
+			    else 'Defeat'
+			end
+			as WinStatus 
+			FROM
+			    game
+			        JOIN
+			    playergame ON (game.gameID = playergame.gameID)
+			where playergame.playerID = %s order by timestamp desc""" % (playerID))
+        gameData = cursor.fetchmany(20)
 
-        return render_template("index.html", gameData = gameData)
+        return render_template("player.html", gameData = gameData, summonerName = summonerName)
     else:
         # summoner name not found
-        return "ERROR: summoner not found"
+        return "ERROR: summoner not found (API key probably expired)"
 
-@app.route("/champPool/<summonerName>")
+@app.route("/champPool/<summonerName>", methods=['GET'])
 def champPool(summonerName):
     player(summonerName);
     cursor.execute("select summonerID from player where summonerName = '%s'" % (summonerName))
@@ -89,7 +113,7 @@ def champPool(summonerName):
         championLevel = champ["championLevel"]
         championPoints = champ["championPoints"]
 
-        cursor.execute("select * from champpool where summonerID = %lu and championID = %d" % (summonerID, championID))
+        cursor.execute("select * from champPool where summonerID = %lu and championID = %d" % (summonerID, championID))
         if cursor.fetchone() != None:
             # game already exists in database
             break
@@ -101,10 +125,10 @@ def champPool(summonerName):
         time.sleep(0.1)
     conn.commit()
     # return "summonerID"
-    cursor.execute("select * from champpool where summonerID = %lu order by championPoints desc" % (summonerID))
+    cursor.execute("select * from champPool where summonerID = %lu order by championPoints desc" % (summonerID))
     champData = cursor.fetchmany(20)
 
-    return render_template("champPool.html", champData = champData)
+    return render_template("champPool.html", champData = champData, summonerName = summonerName)
 
 
 @app.route("/delete/<playerID>/<gameID>")
@@ -112,6 +136,15 @@ def delete(playerID, gameID):
     cursor.execute("delete from playergame where playerID = %s and gameID = %s" % (playerID, gameID))
     conn.commit()
     return "deleted"
+
+@app.route("/clearAllTables")
+def clearAll():
+    cursor.execute("delete from game")
+    cursor.execute("delete from player")
+    cursor.execute("delete from playergame")
+    cursor.execute("delete from champPool")
+    conn.commit()
+    return "Database Cleared"
 
 @app.route("/update/<playerID>/<gameID>/<champID>")
 def update(playerID, gameID, champID):

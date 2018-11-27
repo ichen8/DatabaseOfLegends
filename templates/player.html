@@ -1,0 +1,43 @@
+<!doctype html>
+<html>
+   <link rel=stylesheet type=text/css href="{{ url_for('static', filename='style.css') }}">
+   <h2> Displaying recent games for summoner <font color = "blue">{{ summonerName }} </font> 
+      <font id = "playerID"> (accountID {{ gameData[0][0] }}) </font>
+   </h2> 
+   <body>
+      <table id = "player_games_table" border=0>
+         <tr>
+               <th> </th>
+               <th> Game ID </th>
+               <td> Timestamp </td>
+               <td> Champion </td>
+               <td> Lane </td>
+               <td> KDA </td>
+         </tr>
+         {% for game in gameData %}
+            <tr>
+               <td> {% if game[9] == 'Victory' %} <font color = #1F618D>{{ game[9] }} </font>
+                     {% else %} <font color = #EC7063>{{ game[9] }} </font>
+                     {% endif %}
+               </td>
+               <th> {{ game[1] }} </th>
+               <td> {{ game[2] }} </td>
+               <td> {{ game[4] }} </td>
+               <td> {{ game[5] }} </td>
+               <td> {{ game[6] }} / {{ game[7] }} / {{ game[8] }} </td>
+            </tr>
+         {% endfor %}
+      </table>
+   </body>
+
+   <!-- Return to Menu Option -->
+   <div>
+      <div class = "inner"><form action="{{ url_for('index') }}" method="get">
+         <button id='returnMenuButton' type="submit">Return to Menu</button>
+      </form></div>
+      <div class = "inner"><form action="{{ url_for('champPool', summonerName=summonerName) }}" method="get">
+         <button id='switchModeButton' type="submit">Champion pool for {{summonerName}}</button>
+      </form></div>
+   </div>
+
+</html>
