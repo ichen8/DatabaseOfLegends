@@ -1,19 +1,14 @@
 <!doctype html>
 <html>
+   <title>Database of Legends</title>
+   <link rel=stylesheet type=text/css href="{{ url_for('static', filename='style.css') }}">
    <body>
-      
-      <table border=0>
-         {% for game in gameData %}
-            <tr>
-               <th> Player ID: {{ game[0] }} </th>
-               <th> Game ID: {{ game[1] }} </th>
-               <td> {{ game[2] }} </td>
-               <td> Champion: {{ game[4] }} </td>
-               <td> Lane: {{ game[5] }} </td>
-               <td> KDA: {{ game[6] }} / {{ game[7] }} / {{ game[8] }} </td>
-            </tr>
-         {% endfor %}
-      </table>
-      
+      <h4 style="text-align: center"> Database of Legends : A CS411 Project </h4>
+      <div class="box">
+         <form action="{{ url_for('index') }}" method="post">
+            <input type = "search" id = "playerName" name = "playerName" placeholder="Summoner Name" />
+            <button id='btn_submit' type="submit" name="button">Search</button>
+         </form>
+      </div>
    </body>
 </html>

@@ -1,6 +1,6 @@
 # https://code.tutsplus.com/tutorials/creating-a-web-app-from-scratch-using-python-flask-and-mysql--cms-22972
 
-from flask import Flask, render_template
+from flask import Flask, render_template, request, redirect, url_for
 from flaskext.mysql import MySQL
 from pprint import pprint
 from scipy.stats import linregress
@@ -29,9 +29,12 @@ BASE_URL = "https://na1.api.riotgames.com/lol/"
 
 VALID_GAME_MODES = ["CLASSIC", "ARAM"]
 
-@app.route("/")
+@app.route("/", methods=['GET','POST'])
 def index():
-    return "Welcome!"
+	if request.method == 'POST':
+		name = request.form.get('playerName')
+		return redirect(url_for('player', summonerName=name))
+	return render_template("index.html")
 
 
 def _getServerChampionRatios():
@@ -139,13 +142,14 @@ def recommendChamps(summonerName):
     predictedProportions.sort(key = lambda x: x[1], reverse = True)
     
     entryCount = 1
+    reccomendedData = []
     for entry in predictedProportions:
         if entryCount > 10:
             break
-        print "%s %.2f" % (matchChamp(int(entry[0])), entry[1] * 100)
+        reccomendedData.append((matchChamp(int(entry[0])), "%.2f" % (entry[1] * 100)))
         entryCount += 1
 
-    return str(gameData)
+    return render_template("champPool.html", reccomendedData = reccomendedData, summonerName = summonerName)
 
 
 @app.route("/matchChamp/<championID>")
@@ -157,7 +161,7 @@ def matchChamp(championID):
     for entry in result_tuple:
         return entry
 
-@app.route("/player/<summonerName>")
+@app.route("/player/<summonerName>", methods=['GET'])
 def player(summonerName):
     url = "%ssummoner/v3/summoners/by-name/%s?api_key=%s" % (BASE_URL, summonerName, API_KEY)
     jsonResponse = _request(url)
@@ -178,15 +182,36 @@ def player(summonerName):
 
         insertPlayerGames(playerID)
 
-        cursor.execute("select * from playergame where playerID = %s order by timestamp desc" % (playerID))
-        gameData = cursor.fetchmany(10)
+        # cursor.execute("select * from playergame where playerID = %s order by timestamp desc" % (playerID))
+        cursor.execute("""\
+			select playerID, playergame.gameID, timestamp, championID, championString, lane, kills, deaths, assists
+			,case 
+			    when (((game.team1Player1ID = playergame.playerID
+			        OR game.team1Player2ID = playergame.playerID
+			        OR game.team1Player3ID = playergame.playerID
+			        OR game.team1Player4ID = playergame.playerID
+			        OR game.team1Player5ID = playergame.playerID) AND game.winTeam = 1) OR
+			        ((game.team2Player1ID = playergame.playerID
+			        OR game.team2Player2ID = playergame.playerID
+			        OR game.team2Player3ID = playergame.playerID
+			        OR game.team2Player4ID = playergame.playerID
+			        OR game.team2Player5ID = playergame.playerID) AND game.winTeam = 2))   then 'Victory'
+			    else 'Defeat'
+			end
+			as WinStatus 
+			FROM
+			    game
+			        JOIN
+			    playergame ON (game.gameID = playergame.gameID)
+			where playergame.playerID = %s order by timestamp desc""" % (playerID))
+        gameData = cursor.fetchmany(20)
 
-        return render_template("index.html", gameData = gameData)
+        return render_template("player.html", gameData = gameData, summonerName = summonerName)
     else:
         # summoner name not found
-        return "ERROR: summoner not found"
+        return "ERROR: summoner not found (API key probably expired)"
 
-@app.route("/champPool/<summonerName>")
+@app.route("/champPool/<summonerName>", methods=['GET'])
 def champPool(summonerName):
     player(summonerName);
     cursor.execute("select summonerID from player where summonerName = '%s'" % (summonerName))
@@ -221,7 +246,7 @@ def champPool(summonerName):
     cursor.execute("select * from champPool where summonerID = %lu order by championPoints desc" % (summonerID))
     champData = cursor.fetchmany(20)
 
-    return render_template("champPool.html", champData = champData)
+    return render_template("champPool.html", champData = champData, summonerName = summonerName)
 
 
 @app.route("/delete/<playerID>/<gameID>")
@@ -229,6 +254,15 @@ def delete(playerID, gameID):
     cursor.execute("delete from playergame where playerID = %s and gameID = %s" % (playerID, gameID))
     conn.commit()
     return "deleted"
+
+@app.route("/clearAllTables")
+def clearAll():
+    cursor.execute("delete from game")
+    cursor.execute("delete from player")
+    cursor.execute("delete from playergame")
+    cursor.execute("delete from champPool")
+    conn.commit()
+    return "Database Cleared"
 
 @app.route("/update/<playerID>/<gameID>/<champID>")
 def update(playerID, gameID, champID):
