@@ -16,7 +16,7 @@ mysql = MySQL()
  
 # MySQL configurations
 app.config['MYSQL_DATABASE_USER'] = 'root'
-app.config['MYSQL_DATABASE_PASSWORD'] = 'newpass'
+app.config['MYSQL_DATABASE_PASSWORD'] = ''
 app.config['MYSQL_DATABASE_DB'] = 'lol'
 app.config['MYSQL_DATABASE_HOST'] = 'localhost'
 mysql.init_app(app)
@@ -24,17 +24,18 @@ mysql.init_app(app)
 conn = mysql.connect()
 cursor = conn.cursor()
 
-API_KEY = "RGAPI-4d2f71a3-2aac-4c3f-b62c-7ba40eb15fd1"
+API_KEY = "RGAPI-374b8197-92df-4f67-b81a-950e7adabc24"
 BASE_URL = "https://na1.api.riotgames.com/lol/"
 
 VALID_GAME_MODES = ["CLASSIC", "ARAM"]
 
 @app.route("/", methods=['GET','POST'])
 def index():
-	if request.method == 'POST':
-		name = request.form.get('playerName')
-		return redirect(url_for('player', summonerName=name))
-	return render_template("index.html")
+    _getServerChallengerMatches()
+    if request.method == 'POST':
+        name = request.form.get('playerName')
+        return redirect(url_for('player', summonerName=name))
+    return render_template("index.html")
 
 
 def _getServerChampionRatios():
@@ -80,11 +81,79 @@ def _getServerChampionRatios():
 
     with open(dumpFile, 'w') as f:
         json.dump(playersChampionRatios, f)
-    return playersChampionRatios
+    return 
+
+def _getServerChallengerMatches():
+    dumpFile = "challengerMatches.json"
+    if os.path.exists(dumpFile):
+        with open(dumpFile, 'r') as f:
+            return json.load(f)
+
+    playersUrl = "%sleague/v3/challengerleagues/by-queue/RANKED_SOLO_5x5?api_key=%s" % (BASE_URL, API_KEY)
+    playersJsonResponse = _request(playersUrl)
+    summonerIDList = [player["playerOrTeamId"] for player in playersJsonResponse["entries"]]
+
+    challengerMatches = {}
+    playersNum = 1
+
+    for summonerID in summonerIDList:
+        print playersNum
+
+        accountUrl = "%ssummoner/v3/summoners/%s?api_key=%s" % (BASE_URL, summonerID, API_KEY)
+        accountJsonResponse = _request(accountUrl)
+        if "accountId" not in accountJsonResponse.keys():
+            continue
+        accountID = accountJsonResponse["accountId"]
+
+        matchlistUrl = "%smatch/v3/matchlists/by-account/%s?api_key=%s" % (BASE_URL, accountID, API_KEY)
+        matchlistJsonResponse = _request(matchlistUrl)
+        if "matches" not in matchlistJsonResponse.keys():
+            continue
+        matchlistData = matchlistJsonResponse["matches"]
+
+        for match in matchlistData:
+            gameId = match["gameId"]
+            if match["gameId"] in challengerMatches: 
+                continue
+            matchUrl = "%smatch/v3/matches/%s?api_key=%s" % (BASE_URL, match["gameId"], API_KEY)
+            matchJsonResponse = _request(matchUrl)
+            if "gameId" not in matchJsonResponse.keys():
+                continue
+
+            challengerMatches[gameId] =  {
+                "winner": matchJsonResponse["teams"][0]["win"] == "Fail",
+                "players": [],
+                "champions": [],
+                "items": []
+            }
+
+            for player in matchJsonResponse["participantIdentities"]:
+                challengerMatches[gameId]["players"].append(player["player"]["accountId"])
+
+            for player in matchJsonResponse["participants"]:
+                challengerMatches[gameId]["champions"].append(player["championId"])
+                challengerMatches[gameId]["items"].append([
+                    player["stats"]["item0"],
+                    player["stats"]["item1"],
+                    player["stats"]["item2"],
+                    player["stats"]["item3"],
+                    player["stats"]["item4"],
+                    player["stats"]["item5"],
+                    ]) 
+
+            time.sleep(1.3)
+            print challengerMatches[gameId]
+
+        playersNum += 1
+        time.sleep(1.3)
+
+    with open(dumpFile, 'w') as f:
+        json.dump(challengerMatches, f)
+    return
 
 
 #https://github.com/jteo1/LoL-Champion-Recommender/blob/master/ChampionRecommendation.py
-@app.route("/recommendChamps/<summonerName>")
+@app.route("/recommendChamps/<summonerName>",  methods=['GET'])
 def recommendChamps(summonerName):
     player(summonerName);
     cursor.execute("select playerID from player where summonerName = '%s'" % (summonerName))
@@ -142,14 +211,15 @@ def recommendChamps(summonerName):
     predictedProportions.sort(key = lambda x: x[1], reverse = True)
     
     entryCount = 1
-    reccomendedData = []
+    recommendedData = []
     for entry in predictedProportions:
         if entryCount > 10:
             break
-        reccomendedData.append((matchChamp(int(entry[0])), "%.2f" % (entry[1] * 100)))
+        recommendedData.append((matchChamp(int(entry[0])), "%.2f" % (entry[1] * 100)))
         entryCount += 1
 
-    return render_template("champPool.html", reccomendedData = reccomendedData, summonerName = summonerName)
+    return render_template("recommendChamps.html", recommendedData = recommendedData, summonerName = summonerName)
+
 
 
 @app.route("/matchChamp/<championID>")
@@ -184,26 +254,23 @@ def player(summonerName):
 
         # cursor.execute("select * from playergame where playerID = %s order by timestamp desc" % (playerID))
         cursor.execute("""\
-			select playerID, playergame.gameID, timestamp, championID, championString, lane, kills, deaths, assists
-			,case 
-			    when (((game.team1Player1ID = playergame.playerID
-			        OR game.team1Player2ID = playergame.playerID
-			        OR game.team1Player3ID = playergame.playerID
-			        OR game.team1Player4ID = playergame.playerID
-			        OR game.team1Player5ID = playergame.playerID) AND game.winTeam = 1) OR
-			        ((game.team2Player1ID = playergame.playerID
-			        OR game.team2Player2ID = playergame.playerID
-			        OR game.team2Player3ID = playergame.playerID
-			        OR game.team2Player4ID = playergame.playerID
-			        OR game.team2Player5ID = playergame.playerID) AND game.winTeam = 2))   then 'Victory'
-			    else 'Defeat'
-			end
-			as WinStatus 
-			FROM
-			    game
-			        JOIN
-			    playergame ON (game.gameID = playergame.gameID)
-			where playergame.playerID = %s order by timestamp desc""" % (playerID))
+            select playerID, playergame.gameID, timestamp, championID, championString, lane, kills, deaths, assists
+            ,case 
+                when (((game.team1Player1ID = playergame.playerID
+                    OR game.team1Player2ID = playergame.playerID
+                    OR game.team1Player3ID = playergame.playerID
+                    OR game.team1Player4ID = playergame.playerID
+                    OR game.team1Player5ID = playergame.playerID) AND game.winTeam = 1) OR
+                    ((game.team2Player1ID = playergame.playerID
+                    OR game.team2Player2ID = playergame.playerID
+                    OR game.team2Player3ID = playergame.playerID
+                    OR game.team2Player4ID = playergame.playerID
+                    OR game.team2Player5ID = playergame.playerID) AND game.winTeam = 2))   then 'Victory'
+                else 'Defeat'
+            end
+            as WinStatus 
+            FROM game JOIN playergame ON (game.gameID = playergame.gameID)
+            where playergame.playerID = %s order by timestamp desc""" % (playerID))
         gameData = cursor.fetchmany(20)
 
         return render_template("player.html", gameData = gameData, summonerName = summonerName)
