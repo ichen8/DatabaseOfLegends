@@ -1,0 +1,37 @@
+<!doctype html>
+<html>
+   <link rel=stylesheet type=text/css href="{{ url_for('static', filename='style.css') }}">
+   <h2> Displaying recommended champions for summoner <font color = "blue">{{ summonerName }} </font>
+   </h2> 
+   <body>
+      <table id = "player_games_table" border=0>
+         <tr>
+               <td> Champion Name </td>
+               <td> Percent Recommended </td>
+         </tr>
+         {% for champ in recommendedData %}
+            <tr>
+               <td> {{ champ[0] }} </td>
+               <td> {{ champ[1] }} </td>
+            </tr>
+         {% endfor %}
+      </table>
+      
+   </body>
+
+   <!-- Bottom Menu -->
+   <div>
+      <div class = "inner"><form action="{{ url_for('index') }}" method="get">
+         <button id='returnMenuButton' type="submit">Search for another player</button>
+      </form></div>
+      <div class = "inner"><form action="{{ url_for('player', summonerName=summonerName) }}" method="get">
+         <button id='switchModeButton' type="submit">Recent games for {{summonerName}}</button>
+      </form></div>
+      <div class = "inner"><form action="{{ url_for('champPool', summonerName=summonerName) }}" method="get">
+         <button id='switchModeButton' type="submit">Champion pool for {{summonerName}}</button>
+      </form></div>
+      <div class = "inner"><form action="{{ url_for('recommendChamps', summonerName=summonerName) }}" method="get">
+         <button id='switchModeButton' type="submit">Recommend champions for {{summonerName}}</button>
+      </form></div>
+   </div>
+</html>
