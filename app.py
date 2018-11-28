@@ -24,14 +24,13 @@ mysql.init_app(app)
 conn = mysql.connect()
 cursor = conn.cursor()
 
-API_KEY = "RGAPI-374b8197-92df-4f67-b81a-950e7adabc24"
+API_KEY = "RGAPI-2cb47342-abf1-46b7-b86d-6aa1ba8f8399"
 BASE_URL = "https://na1.api.riotgames.com/lol/"
 
 VALID_GAME_MODES = ["CLASSIC", "ARAM"]
 
 @app.route("/", methods=['GET','POST'])
 def index():
-    _getServerChallengerMatches()
     if request.method == 'POST':
         name = request.form.get('playerName')
         return redirect(url_for('player', summonerName=name))
@@ -220,7 +219,82 @@ def recommendChamps(summonerName):
 
     return render_template("recommendChamps.html", recommendedData = recommendedData, summonerName = summonerName)
 
+@app.route("/recommendedBuild/<summonerName>", methods=['GET'])
+def recommendBuild(summonerName):
+#     player(summonerName);
+#     cursor.execute("select summonerID from player where summonerName = '%s'" % (summonerName))
+#     summonerID = cursor.fetchone()[0]
+#     print summonerID
+#     url = "%sspectator/v3/active-games/by-summoner/%s?api_key=%s" % (BASE_URL, summonerID, API_KEY)
+#     jsonResponse = _request(url)
 
+    # using mock data here 
+    summonerID = 19967304
+    with open('mockLiveGame.json') as f:
+        jsonResponse = json.load(f)
+    json_tree = objectpath.Tree(jsonResponse['participants'])
+
+    # get the champion you're playing in a live game
+    myChampId = (tuple(json_tree.execute(("$..*[@.summonerId is %s].championId" % summonerID))))[0]
+    myTeamId = (tuple(json_tree.execute(("$..*[@.summonerId is %s].teamId" % summonerID))))[0]
+
+    # get the champions your opponents are playing in a live game
+    myEnemyChampId = []
+    if myChampId == 200:
+        for x in range(0, 5):
+            myEnemyChampId.append(jsonResponse['participants'][x]['championId'])
+    else:
+        for x in range(5, 10):
+            myEnemyChampId.append(jsonResponse['participants'][x]['championId'])
+    # parse the challengerMatches json looking for your matchups
+    with open('challengerMatches.json') as f:
+        jsonResponse = json.load(f)
+        
+    itemList = [];
+    for i in range(5):
+        itemList_row = []
+        itemList.append(itemList_row);
+
+    for item in jsonResponse:
+        champList = jsonResponse[item]["champions"]
+        if len(champList) < 10:
+            continue
+        winner = jsonResponse[item]["winner"]
+        items = jsonResponse[item]["items"]
+        challengerTeamId = 0
+        me = 0
+        for me in range(0, 10):
+            # if winner is false, team 1 won. otherwise team 2 did
+            if (me < 5 and champList[me] == myChampId and winner == False): # same champ on team 1 of a challenger match
+                challengerTeamId = 1
+                break
+            elif (me >= 5 and champList[me] == myChampId and winner == True):
+                challengerTeamId = 2
+                break
+
+        if (challengerTeamId == 1): 
+            for i in range(0, 5):
+                for j in range(5, 10):
+                    if (myEnemyChampId[i] == champList[j]):
+                        for x in range(0, 6):
+                            itemList[i].append(items[me][x])
+        elif (challengerTeamId == 2): 
+            for i in range(0, 5):
+                for j in range(0, 5):
+                    if (myEnemyChampId[i] == champList[j]):
+                        for x in range(0, 6):
+                            itemList[i].append(items[me][x])
+    return json.dumps(itemList)
+
+
+    # return str(myTeamId)
+
+
+@app.route("/matchItem/<itemID>")
+def matchItem(itemID):
+    with open('items.json') as f:
+        itemData = json.load(f)
+    return itemData["data"][itemID]["name"]
 
 @app.route("/matchChamp/<championID>")
 def matchChamp(championID):
