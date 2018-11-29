@@ -4,6 +4,7 @@ from flask import Flask, render_template, request, redirect, url_for
 from flaskext.mysql import MySQL
 from pprint import pprint
 from scipy.stats import linregress
+from collections import Counter
 
 import os
 import json
@@ -219,19 +220,23 @@ def recommendChamps(summonerName):
 
     return render_template("recommendChamps.html", recommendedData = recommendedData, summonerName = summonerName)
 
-@app.route("/recommendedBuild/<summonerName>", methods=['GET'])
+@app.route("/recommendBuild/<summonerName>", methods=['GET'])
 def recommendBuild(summonerName):
-#     player(summonerName);
-#     cursor.execute("select summonerID from player where summonerName = '%s'" % (summonerName))
-#     summonerID = cursor.fetchone()[0]
-#     print summonerID
-#     url = "%sspectator/v3/active-games/by-summoner/%s?api_key=%s" % (BASE_URL, summonerID, API_KEY)
-#     jsonResponse = _request(url)
+    player(summonerName);
+    cursor.execute("select summonerID from player where summonerName = '%s'" % (summonerName))
+    summonerID = cursor.fetchone()[0]
+    print summonerID
+    url = "%sspectator/v3/active-games/by-summoner/%s?api_key=%s" % (BASE_URL, summonerID, API_KEY)
+    jsonResponse = _request(url)
 
     # using mock data here 
-    summonerID = 19967304
-    with open('mockLiveGame.json') as f:
-        jsonResponse = json.load(f)
+    # summonerID = 19967304
+    # with open('mockLiveGame.json') as f:
+    #     jsonResponse = json.load(f)
+
+    x = "gameId" in jsonResponse   # check if valid response
+    if x == False:
+        return render_template("recommendBuild.html", recommendedBuild = "error", summonerName = summonerName)
     json_tree = objectpath.Tree(jsonResponse['participants'])
 
     # get the champion you're playing in a live game
@@ -240,7 +245,7 @@ def recommendBuild(summonerName):
 
     # get the champions your opponents are playing in a live game
     myEnemyChampId = []
-    if myChampId == 200:
+    if myTeamId == 200:
         for x in range(0, 5):
             myEnemyChampId.append(jsonResponse['participants'][x]['championId'])
     else:
@@ -249,7 +254,7 @@ def recommendBuild(summonerName):
     # parse the challengerMatches json looking for your matchups
     with open('challengerMatches.json') as f:
         jsonResponse = json.load(f)
-        
+
     itemList = [];
     for i in range(5):
         itemList_row = []
@@ -284,11 +289,19 @@ def recommendBuild(summonerName):
                     if (myEnemyChampId[i] == champList[j]):
                         for x in range(0, 6):
                             itemList[i].append(items[me][x])
-    return json.dumps(itemList)
+    
+    recommendedBuild = []
+    for i in range(5):
+        itemString = []
+        data = Counter(itemList[i])
+        del data[0]
+        item_set = list(data.most_common(10))
+        items = [z[0] for z in item_set]
+        for t in range(9):
+            itemString.append(matchItem(str(items[t])))
+        recommendedBuild.append((matchChamp(myEnemyChampId[i]), itemString, matchChamp(myChampId)))
 
-
-    # return str(myTeamId)
-
+    return render_template("recommendBuild.html", recommendedBuild = recommendedBuild, summonerName = summonerName)
 
 @app.route("/matchItem/<itemID>")
 def matchItem(itemID):

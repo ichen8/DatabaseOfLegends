@@ -44,6 +44,9 @@
       <div class = "inner"><form action="{{ url_for('recommendChamps', summonerName=summonerName) }}" method="get">
          <button id='switchModeButton' type="submit">Recommend champions for {{summonerName}}</button>
       </form></div>
+      <div class = "inner"><form action="{{ url_for('recommendBuild', summonerName=summonerName) }}" method="get">
+         <button id='switchModeButton' type="submit">Recommend build for {{summonerName}}</button>
+      </form></div>
    </div>
 
 </html>

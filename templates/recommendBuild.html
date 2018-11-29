@@ -1,0 +1,60 @@
+<!doctype html>
+<html>
+   <link rel=stylesheet type=text/css href="{{ url_for('static', filename='style.css') }}">
+   <h2> Displaying recommended build for summoner <font color = "blue">{{ summonerName }} </font>
+   </h2> 
+
+   {% if recommendedBuild == 'error' %} <font color = #EC7063>No live game for this summoner </font>
+   {% else %}
+      <body>
+         <h3> Most common items for champion <font color = "blue">{{ recommendedBuild[0][2] }}</font> </h3>
+         <table id = "player_games_table" border=0>
+            <tr>
+                  <td> Playing against </td>
+                  <td> Item 1 </td>
+                  <td> Item 2 </td>
+                  <td> Item 3 </td>
+                  <td> Item 4 </td>
+                  <td> Item 5 </td>
+                  <td> Item 6 </td>
+                  <td> Item 7 </td>
+                  <td> Item 8 </td>
+                  <td> Item 9 </td>
+            </tr>
+            {% for item in recommendedBuild %}
+               <tr>
+                  <td> {{ item[0] }} </td>
+                  <td> {{ item[1][0] }} </td>
+                  <td> {{ item[1][1] }} </td>
+                  <td> {{ item[1][2] }} </td>
+                  <td> {{ item[1][3] }} </td>
+                  <td> {{ item[1][4] }} </td>
+                  <td> {{ item[1][5] }} </td>
+                  <td> {{ item[1][6] }} </td>
+                  <td> {{ item[1][7] }} </td>
+                  <td> {{ item[1][8] }} </td>
+               </tr>
+            {% endfor %}
+         </table>
+         
+      </body>
+   {% endif %}
+   <!-- Bottom Menu -->
+   <div>
+      <div class = "inner"><form action="{{ url_for('index') }}" method="get">
+         <button id='returnMenuButton' type="submit">Search for another player</button>
+      </form></div>
+      <div class = "inner"><form action="{{ url_for('player', summonerName=summonerName) }}" method="get">
+         <button id='switchModeButton' type="submit">Recent games for {{summonerName}}</button>
+      </form></div>
+      <div class = "inner"><form action="{{ url_for('champPool', summonerName=summonerName) }}" method="get">
+         <button id='switchModeButton' type="submit">Champion pool for {{summonerName}}</button>
+      </form></div>
+      <div class = "inner"><form action="{{ url_for('recommendChamps', summonerName=summonerName) }}" method="get">
+         <button id='switchModeButton' type="submit">Recommend champions for {{summonerName}}</button>
+      </form></div>
+      <div class = "inner"><form action="{{ url_for('recommendBuild', summonerName=summonerName) }}" method="get">
+         <button id='switchModeButton' type="submit">Recommend build for {{summonerName}}</button>
+      </form></div>
+   </div>
+</html>
