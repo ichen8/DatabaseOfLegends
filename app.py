@@ -152,7 +152,6 @@ def _getServerChallengerMatches():
     return
 
 
-#https://github.com/jteo1/LoL-Champion-Recommender/blob/master/ChampionRecommendation.py
 @app.route("/recommendChamps/<summonerName>",  methods=['GET'])
 def recommendChamps(summonerName):
     player(summonerName);
